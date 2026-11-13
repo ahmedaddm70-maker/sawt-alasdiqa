@@ -3,207 +3,110 @@ package com.sawt.alasdiqa
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
+import kotlinx.coroutines.delay
 
-private val Navy = Color(0xFF202033)
-private val CardNavy = Color(0xFF30334F)
-private val Green = Color(0xFF08C765)
-private val Muted = Color(0xFFB9BDCC)
+data class Friend(val id: Int, val name: String, val country: String, val avatar: String, val online: Boolean)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { SawtFriendsApp() }
+        setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) { SawtApp() }
+        }
     }
 }
-
-private data class Friend(
-    val name: String,
-    val country: String,
-    val language: String,
-    val online: Boolean,
-    val avatar: String
-)
-
 @Composable
-fun SawtFriendsApp() {
-    val friends = listOf(
-        Friend("طارق", "السعودية", "العربية", true, "🌙"),
-        Friend("سارة", "العراق", "العربية", true, "🌸"),
-        Friend("محمد", "الأردن", "العربية", false, "🎧"),
-        Friend("ليان", "الكويت", "العربية", true, "⭐")
-    )
-    var selectedTab by remember { mutableStateOf("اكتشف") }
-    var search by remember { mutableStateOf("") }
+fun SawtApp() {
+    val bg = Color(0xFF191D2B); val card = Color(0xFF252A3D); val green = Color(0xFF1DB954)
+    var tab by remember { mutableStateOf("اكتشف") }
+    var query by remember { mutableStateOf("") }
+    var myName by remember { mutableStateOf("مستخدم صوت الأصدقاء") }
+    var myCountry by remember { mutableStateOf("العراق") }
+    val friends = remember { mutableStateListOf(Friend(1,"طارق","السعودية","🌙",true), Friend(2,"سارة","العراق","🌸",true), Friend(3,"محمد","الأردن","🎧",false)) }
+    val favs = remember { mutableStateListOf(2) }
+    val history = remember { mutableStateListOf<Pair<Friend, String>>() }
+    var calling by remember { mutableStateOf<Friend?>(null) }
 
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Green,
-            background = Navy,
-            surface = CardNavy
-        )
-    ) {
-        Scaffold(
-            containerColor = Navy,
-            bottomBar = {
-                NavigationBar(containerColor = Color(0xFF292A40)) {
-                    NavigationBarItem(
-                        selected = selectedTab == "اكتشف",
-                        onClick = { selectedTab = "اكتشف" },
-                        icon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        label = { Text("اكتشف") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == "المحادثات",
-                        onClick = { selectedTab = "المحادثات" },
-                        icon = { Icon(Icons.Default.ChatBubble, contentDescription = null) },
-                        label = { Text("المحادثات") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == "المفضلة",
-                        onClick = { selectedTab = "المفضلة" },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = null) },
-                        label = { Text("المفضلة") }
-                    )
-                    NavigationBarItem(
-                        selected = selectedTab == "الإعدادات",
-                        onClick = { selectedTab = "الإعدادات" },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("حسابي") }
-                    )
-                }
+    if (calling != null) {
+        CallScreen(calling!!, bg, card, green) { dur -> history.add(0, calling!! to dur); calling = null }
+        return
+    }
+    Scaffold(containerColor = bg, bottomBar = {
+        NavigationBar(containerColor = card) {
+            listOf("اكتشف" to Icons.Default.Search, "المحادثات" to Icons.Default.ChatBubble, "المفضلة" to Icons.Default.Favorite, "حسابي" to Icons.Default.Settings).forEach { (t, ic) ->
+                NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(ic, null) }, label = { Text(t) })
             }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 18.dp)
-            ) {
-                Spacer(Modifier.height(22.dp))
-                Text(
-                    "صوت الأصدقاء",
-                    color = Color.White,
-                    fontSize = 27.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Right
-                )
-                Text(
-                    "تعرّف على أشخاص جدد وتحدّث معهم",
-                    color = Muted,
-                    fontSize = 14.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Right
-                )
-                Spacer(Modifier.height(18.dp))
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    placeholder = { Text("ابحث عن شخص أو دولة", color = Muted) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    shape = RoundedCornerShape(18.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Green,
-                        unfocusedBorderColor = Color(0xFF55566D)
-                    )
-                )
-                Spacer(Modifier.height(18.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("متصلون الآن", color = Green, fontSize = 13.sp)
-                    Text("أشخاص قد ترغب بالتحدث معهم", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(10.dp))
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(friends.filter {
-                        it.name.contains(search) || it.country.contains(search) || it.language.contains(search)
-                    }) { friend ->
-                        FriendCard(friend)
+        }
+    }) { p ->
+        Column(Modifier.fillMaxSize().padding(p).padding(18.dp)) {
+            Text("صوت الأصدقاء", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            when (tab) {
+                "اكتشف" -> {
+                    OutlinedTextField(value = query, onValueChange = { query = it }, placeholder = { Text("ابحث بالاسم أو الدولة", color = Color.Gray) }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                    Spacer(Modifier.height(12.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(friends.filter { it.name.contains(query, true) || it.country.contains(query, true) }) { f ->
+                            FriendItem(f, favs.contains(f.id), card, green, { if (favs.contains(f.id)) favs.remove(f.id) else favs.add(f.id) }, { calling = f })
+                        }
                     }
+                }
+                "المحادثات" -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(history) { (f, d) -> Text("${f.avatar} ${f.name} - مدة المكالمة: $d", color = Color.White, modifier = Modifier.fillMaxWidth().background(card, RoundedCornerShape(12.dp)).padding(16.dp)) }
+                }
+                "المفضلة" -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(friends.filter { favs.contains(it.id) }) { f -> FriendItem(f, true, card, green, { favs.remove(f.id) }, { calling = f }) }
+                }
+                "حسابي" -> Column(Modifier.background(card, RoundedCornerShape(16.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(value = myName, onValueChange = { myName = it }, label = { Text("الاسم") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
+                    OutlinedTextField(value = myCountry, onValueChange = { myCountry = it }, label = { Text("الدولة") }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White))
                 }
             }
         }
     }
 }
+@Composable
+fun FriendItem(f: Friend, fav: Boolean, card: Color, green: Color, onFav: () -> Unit, onCall: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(card, RoundedCornerShape(18.dp)).padding(16.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(f.avatar, fontSize = 30.sp); Spacer(Modifier.width(12.dp))
+                Column { Text(f.name, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold); Text(f.country, color = Color.Gray) }
+            }
+            IconButton(onClick = onFav) { Icon(if (fav) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null, tint = if (fav) Color.Red else Color.Gray) }
+        }
+        Spacer(Modifier.height(10.dp))
+        Button(onClick = onCall, enabled = f.online, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = green)) { Text("دعنا نتحدث") }
+    }
+}
 
 @Composable
-private fun FriendCard(friend: Friend) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardNavy)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(if (friend.online) "● متصل الآن" else "○ غير متصل",
-                    color = if (friend.online) Green else Muted, fontSize = 12.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(friend.name, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-                        Text("${friend.country} • يتحدث ${friend.language}", color = Muted, fontSize = 13.sp)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Box(
-                        modifier = Modifier.size(58.dp).background(Color(0xFF454965), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(friend.avatar, fontSize = 30.sp)
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { /* سنربط زر الاتصال بخدمة المكالمات في المرحلة التالية */ },
-                enabled = friend.online,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Green,
-                    disabledContainerColor = Color(0xFF55566D)
-                ),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Icon(Icons.Default.Waves, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("دعنا نتحدث", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
+fun CallScreen(f: Friend, bg: Color, card: Color, green: Color, onEnd: (String) -> Unit) {
+    var sec by remember { mutableIntStateOf(0) }
+    var mute by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { while (true) { delay(1000); sec++ } }
+    val t = String.format("%02d:%02d", sec / 60, sec % 60)
+    Column(Modifier.fillMaxSize().background(bg).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceAround) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("مكالمة صوتية نشطة", color = green, fontSize = 18.sp); Spacer(Modifier.height(20.dp))
+            Text(f.avatar, fontSize = 60.sp); Text(f.name, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold); Text(t, color = Color.White, fontSize = 22.sp)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            IconButton(onClick = { mute = !mute }, modifier = Modifier.size(60.dp).background(card, CircleShape)) { Icon(if (mute) Icons.Default.MicOff else Icons.Default.Mic, null, tint = Color.White) }
+            IconButton(onClick = { onEnd(t) }, modifier = Modifier.size(64.dp).background(Color.Red, CircleShape)) { Icon(Icons.Default.CallEnd, null, tint = Color.White) }
         }
     }
 }
